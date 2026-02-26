@@ -13,7 +13,35 @@ pipeline {
     }
 
     stages {
+        //ci instalar dependencias
+        stage('[CI] install dependencies') {
+            steps {
+                sh '''
+                  echo ">>> Instalando dependencias..."
+                  npm install
+                '''
+            }
+        }
+        //Ci ejecutar pruebas unitarias
+        stage('[CI] Unit tests') {
+            steps {
+                sh '''
+                  echo ">>> Ejecutando tests..."
+                  npm run test
+                '''
+            }
+        }
+        //ejecutar pruebas de integración
+        stage('[CI] Integration tests') {
+            steps {
+                sh '''
+                  echo ">>> Ejecutando pruebas de integración..."
+                  npm run test:integration
+                '''
+            }
+        }
 
+/*
         stage('Hello world') {
             steps {
                 script { 
@@ -37,7 +65,7 @@ pipeline {
                 '''
             }
         }
-
+*/
         stage('Azure Login') {
             steps {
                 withCredentials([
@@ -94,7 +122,8 @@ pipeline {
                 '''
             }
         }
-
+        
+        
         stage('[CD-DEV] Set Image Tag in k8s.yml') {
             steps {
                 script { 
@@ -112,7 +141,7 @@ pipeline {
                 '''
             }
         }
-
+        
         stage('[CD-DEV] Deploy to AKS') {
           steps {
             sh '''
@@ -154,5 +183,138 @@ pipeline {
             }
         }
 
+    //qa aprobación manual
+    stage('Aprobar despliegue a QA') {
+        steps {
+            input message: '¿Aprobar despliegue a QA?', ok: 'Sí, desplegar'
+        }
     }
+
+    //QA
+        
+        stage('[CD-QA] Set Image Tag in k8s.yml') {
+            steps {
+                script { 
+                    // Declarar más variables de entorno
+                    env.API_PROVIDER_URL = "https://dev.api.com"
+                    env.ENV = "QA"
+                }
+
+                sh '''
+                  echo ">>> Renderizando k8s.yml..."
+                  
+                  envsubst < k8s.yml > k8s-dev.yml
+                  cat k8s-dev.yml
+
+                '''
+            }
+        }
+        
+        stage('[CD-QA] Deploy to AKS') {
+          steps {
+            sh '''
+                az aks command invoke \
+                  --resource-group $RESOURCE_GROUP \
+                  --name $AKS_NAME \
+                  --command "kubectl apply -f k8s-dev.yml" \
+                  --file k8s-dev.yml
+
+            '''
+          }
+        }
+        stage('[CD-QA] Get LoadBalancer IP') {
+            steps {
+                sh '''
+                  echo ">>> Intentando obtener IP del LoadBalancer..."
+
+                  SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"  # Cambia esto por el nombre real de tu Service
+                  LB_IP=""
+                  MAX_RETRIES=5
+                  RETRY_COUNT=0
+        
+                  while [ -z "$LB_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                    LB_IP=$(kubectl get svc $SERVICE_NAME -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                    if [ -z "$LB_IP" ]; then
+                      RETRY_COUNT=$((RETRY_COUNT+1))
+                      echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 5s..."
+                      sleep 5
+                    fi
+                  done
+        
+                  if [ -z "$LB_IP" ]; then
+                    echo ">>> No se pudo obtener la IP del LoadBalancer después de $MAX_RETRIES intentos."
+                    exit 1
+                  else
+                    echo ">>> IP del LoadBalancer asignada: $LB_IP"
+                  fi
+                '''
+            }
+        }
+
+    //prd aprobación manual
+    stage('Aprobar despliegue a PRD') {
+        steps {
+            input message: '¿Aprobar despliegue a producción?', ok: 'Sí, desplegar'
+        }
+    }
+
+     stage('[CD-prd] Set Image Tag in k8s.yml') {
+            steps {
+                script { 
+                    // Declarar más variables de entorno
+                    env.API_PROVIDER_URL = "https://dev.api.com"
+                    env.ENV = "QA"
+                }
+
+                sh '''
+                  echo ">>> Renderizando k8s.yml..."
+                  
+                  envsubst < k8s.yml > k8s-dev.yml
+                  cat k8s-dev.yml
+
+                '''
+            }
+        }
+        
+        stage('[CD-prd] Deploy to AKS') {
+          steps {
+            sh '''
+                az aks command invoke \
+                  --resource-group $RESOURCE_GROUP \
+                  --name $AKS_NAME \
+                  --command "kubectl apply -f k8s-dev.yml" \
+                  --file k8s-dev.yml
+
+            '''
+          }
+        }
+        stage('[CD-prd] Get LoadBalancer IP') {
+            steps {
+                sh '''
+                  echo ">>> Intentando obtener IP del LoadBalancer..."
+
+                  SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"  # Cambia esto por el nombre real de tu Service
+                  LB_IP=""
+                  MAX_RETRIES=5
+                  RETRY_COUNT=0
+        
+                  while [ -z "$LB_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                    LB_IP=$(kubectl get svc $SERVICE_NAME -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                    if [ -z "$LB_IP" ]; then
+                      RETRY_COUNT=$((RETRY_COUNT+1))
+                      echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 5s..."
+                      sleep 5
+                    fi
+                  done
+        
+                  if [ -z "$LB_IP" ]; then
+                    echo ">>> No se pudo obtener la IP del LoadBalancer después de $MAX_RETRIES intentos."
+                    exit 1
+                  else
+                    echo ">>> IP del LoadBalancer asignada: $LB_IP"
+                  fi
+                '''
+            }
+        }
+
 }
