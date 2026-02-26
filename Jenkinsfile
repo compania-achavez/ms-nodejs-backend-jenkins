@@ -141,7 +141,6 @@ pipeline {
                 '''
             }
         }
-        
         stage('[CD-DEV] Deploy to AKS') {
           steps {
             sh '''
@@ -191,23 +190,31 @@ pipeline {
     }
 
     //QA
-        
-        stage('[CD-QA]  Deploy a AKS') {
+        stage('[CD-QA]  Set Image Tag in k8s.yml') {
             steps {
                 script {
                     // Declarar más variables de entorno
                     env.API_PROVIDER_URL = "https://qa.api.com"
                     env.ENV = "qa"
                 }
-
                 sh '''
                   echo ">>> Renderizando k8s.yml..."
                   envsubst < k8s.yml > k8s-qa.yml
-                  echo ">>> Aplicando en AKS (QA)..."
-                  kubectl apply -f k8s-qa.yml
-
+                  cat k8s-qa.yml
                 '''
             }
+        }
+        stage('[CD-QA] Deploy to AKS') {
+          steps {
+            sh '''
+                az aks command invoke \
+                  --resource-group $RESOURCE_GROUP \
+                  --name $AKS_NAME \
+                  --command "kubectl apply -f k8s-qa.yml" \
+                  --file k8s-qa.yml
+
+            '''
+          }
         }
 
         stage('[CD-QA] Get LoadBalancer IP') {
