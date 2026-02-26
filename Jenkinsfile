@@ -12,6 +12,8 @@ pipeline {
         AKS_NAME = "aks-dev-eastus"
     }
 
+    
+
     stages {
         //ci instalar dependencias
         stage('[CI] install dependencies') {
@@ -123,7 +125,7 @@ pipeline {
             }
         }
         
-        
+    //dev
         stage('[CD-DEV] Set Image Tag in k8s.yml') {
             steps {
                 script { 
@@ -134,10 +136,8 @@ pipeline {
 
                 sh '''
                   echo ">>> Renderizando k8s.yml..."
-                  
                   envsubst < k8s.yml > k8s-dev.yml
                   cat k8s-dev.yml
-
                 '''
             }
         }
@@ -196,7 +196,7 @@ pipeline {
             steps {
                 script {
                     // Declarar más variables de entorno
-                    env.API_PROVIDER_URL = "https://dev.api.com"
+                    env.API_PROVIDER_URL = "https://qa.api.com"
                     env.ENV = "qa"
                 }
 
@@ -204,6 +204,7 @@ pipeline {
                   echo ">>> Renderizando k8s.yml..."
                   
                   envsubst < k8s.yml > k8s-qa.yml
+                  echo ">>> Aplicando en AKS (QA)..."
                   cat k8s-qa.yml
 
                 '''
@@ -262,7 +263,7 @@ pipeline {
             steps {
                 script {
                     // Declarar más variables de entorno
-                    env.API_PROVIDER_URL = "https://dev.api.com"
+                    env.API_PROVIDER_URL = "https://prd.api.com"
                     env.ENV = "prd"
                 }
 
