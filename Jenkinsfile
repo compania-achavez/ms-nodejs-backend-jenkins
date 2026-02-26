@@ -224,7 +224,7 @@ pipeline {
 
                   SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"  # Cambia esto por el nombre real de tu Service
                   LB_IP=""
-                  MAX_RETRIES=5
+                  MAX_RETRIES=12
                   RETRY_COUNT=0
         
                   while [ -z "$LB_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -232,7 +232,7 @@ pipeline {
                     if [ -z "$LB_IP" ]; then
                       RETRY_COUNT=$((RETRY_COUNT+1))
                       echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 5s..."
-                      sleep 10
+                      sleep 15
                     fi
                   done
         
