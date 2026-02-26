@@ -192,7 +192,7 @@ pipeline {
 
     //QA
         
-        stage('[CD-QA] Set Image Tag in k8s.yml') {
+        stage('[CD-QA]  Deploy a AKS') {
             steps {
                 script {
                     // Declarar más variables de entorno
@@ -202,27 +202,14 @@ pipeline {
 
                 sh '''
                   echo ">>> Renderizando k8s.yml..."
-                  
                   envsubst < k8s.yml > k8s-qa.yml
                   echo ">>> Aplicando en AKS (QA)..."
-                  cat k8s-qa.yml
+                  kubectl apply -f k8s-qa.yml
 
                 '''
             }
         }
-        
-        stage('[CD-QA] Deploy to AKS') {
-          steps {
-            sh '''
-                az aks command invoke \
-                  --resource-group $RESOURCE_GROUP \
-                  --name $AKS_NAME \
-                  --command "kubectl apply -f k8s-qa.yml" \
-                  --file k8s-qa.yml
 
-            '''
-          }
-        }
         stage('[CD-QA] Get LoadBalancer IP') {
             steps {
                 sh '''
@@ -230,7 +217,7 @@ pipeline {
 
                   SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"  # Cambia esto por el nombre real de tu Service
                   LB_IP=""
-                  MAX_RETRIES=5
+                  MAX_RETRIES=30
                   RETRY_COUNT=0
         
                   while [ -z "$LB_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -238,7 +225,7 @@ pipeline {
                     if [ -z "$LB_IP" ]; then
                       RETRY_COUNT=$((RETRY_COUNT+1))
                       echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 5s..."
-                      sleep 5
+                      sleep 10
                     fi
                   done
         
