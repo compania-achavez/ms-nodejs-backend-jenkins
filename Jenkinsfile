@@ -263,7 +263,7 @@ pipeline {
                 script {
                     // Declarar más variables de entorno
                     env.API_PROVIDER_URL = "https://dev.api.com"
-                    env.ENV = "QA"
+                    env.ENV = "prd"
                 }
 
                 sh '''
