@@ -258,9 +258,9 @@ pipeline {
         }
     }
 
-     stage('[CD-prd] Set Image Tag in k8s.yml') {
+    stage('[CD-prd] Set Image Tag in k8s.yml') {
             steps {
-                script { 
+                script {
                     // Declarar más variables de entorno
                     env.API_PROVIDER_URL = "https://dev.api.com"
                     env.ENV = "QA"
@@ -316,5 +316,5 @@ pipeline {
                 '''
             }
         }
-
+    }
 }
