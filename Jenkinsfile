@@ -198,49 +198,36 @@ pipeline {
                     env.ENV = "qa"
                 }
                 sh '''
-                  echo ">>> Renderizando k8s.yml..."
+                  echo ">>> Renderizando manifiesto para QA..."
                   envsubst < k8s.yml > k8s-qa.yml
-                  cat k8s-qa.yml
+                  echo ">>> Aplicando en AKS (QA)..."
+                  kubectl apply -f k8s-qa.yml
                 '''
             }
         }
-        stage('[CD-QA] Deploy to AKS') {
-          steps {
-            sh '''
-                az aks command invoke \
-                  --resource-group $RESOURCE_GROUP \
-                  --name $AKS_NAME \
-                  --command "kubectl apply -f k8s-qa.yml" \
-                  --file k8s-qa.yml
-
-            '''
-          }
-        }
-
-        stage('[CD-QA] Get LoadBalancer IP') {
+  stage('[CD-QA] Imprimir IP del servicio') {
             steps {
                 sh '''
                   echo ">>> Obteniendo IP del LoadBalancer (QA)..."
-
-                  SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"  # Cambia esto por el nombre real de tu Service
+                  SERVICE_NAME="my-nodejs-service-${APELLIDO}-${ENV}"
                   LB_IP=""
-                  MAX_RETRIES=12
+                  MAX_RETRIES=30
                   RETRY_COUNT=0
-        
+
                   while [ -z "$LB_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                    LB_IP=$(kubectl get svc $SERVICE_NAME -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+                    LB_IP=$(kubectl get svc "$SERVICE_NAME" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
                     if [ -z "$LB_IP" ]; then
                       RETRY_COUNT=$((RETRY_COUNT+1))
-                      echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 5s..."
-                      sleep 15
+                      echo "Intento $RETRY_COUNT/$MAX_RETRIES: IP aún no asignada, esperando 10s..."
+                      sleep 10
                     fi
                   done
-        
+
                   if [ -z "$LB_IP" ]; then
-                    echo ">>> No se pudo obtener la IP del LoadBalancer después de $MAX_RETRIES intentos."
+                    echo ">>> No se pudo obtener la IP del LoadBalancer en QA."
                     exit 1
                   else
-                    echo ">>> IP del LoadBalancer asignada: $LB_IP"
+                    echo ">>> IP QA: $LB_IP"
                   fi
                 '''
             }
